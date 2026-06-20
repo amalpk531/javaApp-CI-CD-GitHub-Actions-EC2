@@ -64,9 +64,39 @@ jobs:
           docker push $REGISTRY/$ECR_REPOSITORY:latest
           # Save full image URI for deploy step
           echo "IMAGE=$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_ENV
+       # ── 7. SSH into EC2 and deploy new container ──────────────
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.EC2_HOST }}
+          username: ${{ env.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}       # Private key stored in GitHub secrets
+          script: |
+            # Authenticate Docker on EC2 to pull from ECR
+            aws ecr get-login-password --region ${{ env.AWS_REGION }} | \
+              docker login --username AWS --password-stdin \
+              ${{ steps.login-ecr.outputs.registry }}
+
+            # Pull the new image
+            docker pull ${{ env.IMAGE }}
+
+            # Stop and remove old container if running
+            docker stop task-api || true
+            docker rm   task-api || true
+
+            # Start new container
+            docker run -d \
+              --name task-api \
+              --restart unless-stopped \
+              -p 8080:8080 \
+              ${{ env.IMAGE }}
+
+            # Wait and verify health check
+            sleep 5
+            curl -f http://localhost:8080/health || exit 1
 
 
 
-      # ── 7. Confirm deployment ─────────────────────────────────
+      # ── 8. Confirm deployment ─────────────────────────────────
       - name: Deployment successful
         run: echo "Deployed ${{ github.sha }} to EC2 successfully"
