@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
 
-# Required for OIDC token request
+# Required for OIDC token request 
 permissions:
   id-token: write
   contents: read
