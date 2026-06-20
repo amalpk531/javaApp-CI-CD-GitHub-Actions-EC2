@@ -34,7 +34,7 @@ jobs:
 
       # ── 3. Run tests ──────────────────────────────────────────
       - name: Run tests
-        working-directory: task-api
+        # working-directory: task-api
         run: mvn test
 
       # ── 4. Authenticate to AWS via OIDC (no long-lived keys) ──
@@ -51,7 +51,7 @@ jobs:
 
       # ── 6. Build Docker image and push to ECR ─────────────────
       - name: Build and push Docker image
-        working-directory: task-api
+        # working-directory: task-api
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
