@@ -10,10 +10,10 @@ permissions:
   contents: read
 
 env:
-  AWS_REGION: us-east-1                         # Change to your region
-  ECR_REPOSITORY: task-api                      # Your ECR repo name
-  EC2_HOST: ${{ secrets.EC2_HOST }}             # EC2 public IP or DNS
-  EC2_USER: ubuntu                              # EC2 SSH username
+  AWS_REGION: ${{ secrets.AWS_REGION }}  
+  ECR_REPOSITORY: ${{ secrets.REPOSITORY }}                     
+  EC2_HOST: ${{ secrets.EC2_HOST }}        
+  EC2_USER: ${{ secrets.EC2_USER}}              
 
 jobs:
   build-and-deploy:
@@ -42,7 +42,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}   # IAM role ARN
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
       # ── 5. Log in to Amazon ECR ───────────────────────────────
       - name: Login to Amazon ECR
@@ -65,37 +65,8 @@ jobs:
           # Save full image URI for deploy step
           echo "IMAGE=$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_ENV
 
-      # ── 7. SSH into EC2 and deploy new container ──────────────
-      - name: Deploy to EC2
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ env.EC2_HOST }}
-          username: ${{ env.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}       # Private key stored in GitHub secrets
-          script: |
-            # Authenticate Docker on EC2 to pull from ECR
-            aws ecr get-login-password --region ${{ env.AWS_REGION }} | \
-              docker login --username AWS --password-stdin \
-              ${{ steps.login-ecr.outputs.registry }}
 
-            # Pull the new image
-            docker pull ${{ env.IMAGE }}
 
-            # Stop and remove old container if running
-            docker stop task-api || true
-            docker rm   task-api || true
-
-            # Start new container
-            docker run -d \
-              --name task-api \
-              --restart unless-stopped \
-              -p 8080:8080 \
-              ${{ env.IMAGE }}
-
-            # Wait and verify health check
-            sleep 5
-            curl -f http://localhost:8080/health || exit 1
-
-      # ── 8. Confirm deployment ─────────────────────────────────
+      # ── 7. Confirm deployment ─────────────────────────────────
       - name: Deployment successful
         run: echo "Deployed ${{ github.sha }} to EC2 successfully"
