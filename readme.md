@@ -33,6 +33,7 @@ The project implements a modern, cloud-native architecture combining **Spring Bo
 
 ---
 
+
 ## 2. Project Directory Structure
 
 ```
